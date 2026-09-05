@@ -4,35 +4,21 @@ A codewhale set up designed for student to benefit from advanced tutoring
 
 ## Requirement → Implementation
 
-Multiple syllabus types → process_syllabus handles any subject from PDFs
-
-Build tutoring plans → Automatic concept extraction and curriculum mapping
-
-Socratic approach → metacognitive_tutor.md prompt with questioning framework
-
-Metacognition focus → Specialized prompts for self-reflection and strategy awareness
-
-Track student responses → tracking_hook.py with full response history
-
-Return to theory → Weakness detection triggers concept review
-
-Learn from exams → process_exam identifies tested concepts and frequencies
-
-Track learning stage → current_stage and concept_mastery in progress data
-
-Multi-language → Language detection and support throughout
-
-Cheatsheets → generate_cheatsheet for each syllabus
-
-Recall support → Cheatsheets and spaced repetition system
-
-Adaptive → Adjusts based on mastery, confidence, and learning style
-
-Subject-Specific Skills → Math problem-solving, economic analysis, social science critical thinking `math_problem_solver.md`, `economics_analysis.md`, `social_science_analysis.md`
-
-Web Dashboard → Visualize student progress, concept mastery, exam analytics  `tutor_dashboard.py`, `App.jsx`, `App.css`
-
-Sophisticated Exam Analysis → Question classification, difficulty estimation, Bloom's taxonomy mapping, study plan generation `exam_analyzer_mcp.py`
+ * Multiple syllabus types → process_syllabus handles any subject from PDFs
+ * Build tutoring plans → Automatic concept extraction and curriculum mapping
+ * Socratic approach → metacognitive_tutor.md prompt with questioning framework
+ * Metacognition focus → Specialized prompts for self-reflection and strategy awareness
+ * Track student responses → tracking_hook.py with full response history
+ * Return to theory → Weakness detection triggers concept review
+ * Learn from exams → process_exam identifies tested concepts and frequencies
+ * Track learning stage → current_stage and concept_mastery in progress data
+ * Multi-language → Language detection and support throughout
+ * Cheatsheets → generate_cheatsheet for each syllabus
+ * Recall support → Cheatsheets and spaced repetition system
+ * Adaptive → Adjusts based on mastery, confidence, and learning style
+ * Subject-Specific Skills → Math problem-solving, economic analysis, social science critical thinking `math_problem_solver.md`, `economics_analysis.md`, `social_science_analysis.md`
+ * Web Dashboard → Visualize student progress, concept mastery, exam analytics  `tutor_dashboard.py`, `App.jsx`, `App.css`
+ * Sophisticated Exam Analysis → Question classification, difficulty estimation, Bloom's taxonomy mapping, study plan generation `exam_analyzer_mcp.py`
 
 ## Architecture
 
@@ -68,7 +54,7 @@ Sophisticated Exam Analysis → Question classification, difficulty estimation, 
 │  │  - Weakness identification                              │   │
 │  └─────────────────────────────────────────────────────────┘   │
 └────────────────────────────────────────────────────────────────┘
-```text
+```
 
 ## Install / Uninstall
 
@@ -89,35 +75,6 @@ then drop syllabus/exam PDFs into `~/.codewhale/syllabi` and
 `~/.codewhale/exams`. Start tutoring with the `metacognitive-tutor` skill
 (`/skill metacognitive-tutor`).
 
-## File Structure Summary
-
-```text
-~/.codewhale/
-├── mcp.json                          # MCP servers (syllabus_processor, exam_analyzer, math_engine, practice_engine)
-├── skills/
-│   ├── metacognitive-tutor/SKILL.md
-│   ├── math-problem-solver/SKILL.md
-│   ├── linear-algebra/SKILL.md
-│   ├── probability-statistics/SKILL.md
-│   ├── python-programming/SKILL.md
-│   ├── data-visualization/SKILL.md
-│   ├── exam-technique/SKILL.md
-│   ├── economics-analysis/SKILL.md
-│   └── social-science-analysis/SKILL.md
-├── tutor/
-│   ├── .venv/                        # private Python environment
-│   ├── syllabus_processor_mcp.py     # MCP server
-│   ├── exam_analyzer_mcp.py          # MCP server
-│   ├── math_engine_mcp.py            # MCP server (SymPy)
-│   ├── practice_engine_mcp.py        # MCP server (exercises/grading)
-│   ├── tutor_dashboard.py            # dashboard API
-│   ├── dashboard/                    # React (Vite) frontend
-│   └── ...                           # helper scripts
-├── syllabi/                          # processed syllabus JSON
-├── exams/                            # processed exam JSON
-├── cheatsheets/                      # generated cheatsheets
-└── tutor_progress/                   # student progress (unified)
-```text
 
 # Working with the Tutor
 
@@ -201,3 +158,34 @@ cd ~/.codewhale/tutor/dashboard && npm install && npm run dev
 Open http://localhost:5173 to view student progress, exam analytics, and
 learning insights. For a production build, run `npm run build` in the dashboard
 directory.
+
+
+## File Structure Summary
+
+```text
+~/.codewhale/
+├── mcp.json                          # MCP servers (syllabus_processor, exam_analyzer, math_engine, practice_engine)
+├── skills/
+│   ├── metacognitive-tutor/SKILL.md
+│   ├── math-problem-solver/SKILL.md
+│   ├── linear-algebra/SKILL.md
+│   ├── probability-statistics/SKILL.md
+│   ├── python-programming/SKILL.md
+│   ├── data-visualization/SKILL.md
+│   ├── exam-technique/SKILL.md
+│   ├── economics-analysis/SKILL.md
+│   └── social-science-analysis/SKILL.md
+├── tutor/
+│   ├── .venv/                        # private Python environment
+│   ├── syllabus_processor_mcp.py     # MCP server
+│   ├── exam_analyzer_mcp.py          # MCP server
+│   ├── math_engine_mcp.py            # MCP server (SymPy)
+│   ├── practice_engine_mcp.py        # MCP server (exercises/grading)
+│   ├── tutor_dashboard.py            # dashboard API
+│   ├── dashboard/                    # React (Vite) frontend
+│   └── ...                           # helper scripts
+├── syllabi/                          # processed syllabus JSON
+├── exams/                            # processed exam JSON
+├── cheatsheets/                      # generated cheatsheets
+└── tutor_progress/                   # student progress (unified)
+```
