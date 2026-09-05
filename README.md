@@ -25,14 +25,23 @@ A [codewhale](https://codewhale.net/en) set up designed for students to benefit 
 ## Install / Uninstall
 
 ```bash
+## First install codewhale
+curl -fsSL https://codewhale.net/install.sh | sh
+codewhale doctor
+
+## Once configured with your inferrence provider, stop codewhale and Clone this repo
+git clone https://github.com/Edouard-Legoupil/codewhale-tutor.git
+
+# Get in the folder
+cd codewhale-tutor
 # One command installs the MCP servers, skills, and dashboard backend
 # into ~/.codewhale using Codewhale's real conventions.
 ./install.sh
 
-# Remove everything install.sh added (keeps student data).
+# If needed, remove everything install.sh added (keeps student data).
 ./uninstall.sh
 
-# Remove everything including student data.
+# If needed, remove everything including student data.
 ./uninstall.sh --purge-data
 ```
 
@@ -48,19 +57,22 @@ Tutoring is driven by the `metacognitive-tutor` skill plus four MCP servers.
 There are no bespoke slash commands — the tutor agent calls these tools for you
 when you ask in plain language.
 
-```text
+
 1. Put syllabus/exam PDFs in:
      ~/.codewhale/syllabi
      ~/.codewhale/exams
 
 2. Start Codewhale and activate the tutor:
-     /skill metacognitive-tutor
+
+```bash
+/skill metacognitive-tutor
+```
 
 3. Ask naturally, e.g.:
      "Process algebra_3.pdf as `algebra3` and plan my revision."
      "I'm stuck on diagonalisation — quiz me Socratically."
      "Analyze proba_2023.pdf and make a 7-day study plan."
-```
+
 
 Tools available to the tutor (`syllabus_processor` MCP server):
 
