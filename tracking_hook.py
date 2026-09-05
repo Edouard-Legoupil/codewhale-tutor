@@ -56,16 +56,24 @@ def main():
     # Analyze response
     analysis = analyze_student_response(question, response)
     
-    # Load progress
+    # Load progress (canonical schema, preserving any existing keys)
     progress_file = PROGRESS_DIR / f"{student_id}_{syllabus_id}.json"
     if progress_file.exists():
         with open(progress_file, 'r') as f:
             progress = json.load(f)
     else:
-        progress = {"history": [], "weaknesses": []}
-    
+        progress = {}
+
+    progress.setdefault("student_id", student_id)
+    progress.setdefault("syllabus_id", syllabus_id)
+    progress.setdefault("response_history", [])
+    progress.setdefault("weaknesses", [])
+    progress.setdefault("concept_mastery", {})
+    progress.setdefault("current_stage", 0)
+    progress.setdefault("last_session", None)
+
     # Record interaction
-    progress["history"].append({
+    progress["response_history"].append({
         "timestamp": datetime.now().isoformat(),
         "concept": concept,
         "question": question,
@@ -73,7 +81,8 @@ def main():
         "confidence": analysis["confidence"],
         "analysis": analysis
     })
-    
+    progress["last_session"] = datetime.now().isoformat()
+
     # Update weaknesses
     if analysis["confidence"] < 40 and concept not in progress.get("weaknesses", []):
         progress["weaknesses"].append(concept)

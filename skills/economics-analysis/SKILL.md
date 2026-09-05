@@ -1,12 +1,7 @@
 ---
 name: economics-analysis
 description: Economic thinking framework and analysis skills
-user-invocable: true
-allowed-tools:
-  - read
-  - ask_user_question
-  - process_syllabus
-  - generate_cheatsheet
+invocation: model+user
 ---
 
 # 💰 Economic Thinking Framework

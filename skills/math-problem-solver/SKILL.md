@@ -1,12 +1,7 @@
 ---
 name: math-problem-solver
 description: Systematic approach to solving mathematical problems
-user-invocable: true
-allowed-tools:
-  - read
-  - ask_user_question
-  - process_syllabus
-  - generate_cheatsheet
+invocation: model+user
 ---
 
 # 📐 Mathematics Problem-Solving Framework

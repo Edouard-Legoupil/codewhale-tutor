@@ -2,6 +2,9 @@
 
 import json
 from datetime import datetime, timedelta
+from pathlib import Path
+
+PROGRESS_DIR = Path.home() / ".codewhale" / "tutor_progress"
 
 class SpacedRepetition:
     def __init__(self, student_id, syllabus_id):
@@ -15,7 +18,8 @@ class SpacedRepetition:
             with open(self.progress_file, 'r') as f:
                 self.progress = json.load(f)
         else:
-            self.progress = {"review_queue": []}
+            self.progress = {}
+        self.progress.setdefault("review_queue", [])
     
     def schedule_review(self, concept: str, mastery: float):
         """Schedule a review based on mastery level"""

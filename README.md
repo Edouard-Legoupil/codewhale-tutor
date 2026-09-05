@@ -70,54 +70,46 @@ Sophisticated Exam Analysis → Question classification, difficulty estimation, 
 └────────────────────────────────────────────────────────────────┘
 ```text
 
-## Install
+## Install / Uninstall
 
 ```bash
-# 1. Install dependencies
-pip install PyPDF2 markdown
+# One command installs the MCP servers, skills, and dashboard backend
+# into ~/.codewhale using Codewhale's real conventions.
+./install.sh
 
-# 2. Create directories
-mkdir -p ~/.codewhale/{syllabi,exams,progress,cheatsheets,skills/education}
+# Remove everything install.sh added (keeps student data).
+./uninstall.sh
 
-# 3. Place syllabus PDFs in the syllabi directory
-cp ~/Downloads/economics_101.pdf ~/.codewhale/syllabi/
-cp ~/Downloads/calculus_201.pdf ~/.codewhale/syllabi/
-
-# 4. Place exam PDFs in the exams directory  
-cp ~/Downloads/economics_exam_2023.pdf ~/.codewhale/exams/
-cp ~/Downloads/calculus_exam_2023.pdf ~/.codewhale/exams/
-
-# 5. Start CodeWhale in tutor mode
-codewhale --agent metacognitive_tutor
+# Remove everything including student data.
+./uninstall.sh --purge-data
 ```
+
+After installing, restart Codewhale so it re-reads `~/.codewhale/mcp.json`,
+then drop syllabus/exam PDFs into `~/.codewhale/syllabi` and
+`~/.codewhale/exams`. Start tutoring with the `metacognitive-tutor` skill
+(`/skill metacognitive-tutor`).
 
 ## File Structure Summary
 
 ```text
 ~/.codewhale/
-├── config.toml                       # Main configuration
-├── agents/
-│   └── metacognitive_tutor.toml      # Tutor agent config
-├── prompts/
-│   └── metacognitive_tutor.md        # Tutor system prompt
-├── syllabi/
-│   ├── economics_101.json           # Processed syllabus
-│   └── calculus_201.json
-├── exams/
-│   ├── economics_exam_2023.json     # Processed exam
-│   └── calculus_exam_2023.json
-├── progress/
-│   ├── student1_economics.json      # Student progress
-│   └── student1_calculus.json
-├── cheatsheets/
-│   ├── economics_cheatsheet.md      # Generated cheatsheets
-│   └── calculus_cheatsheet.md
-├── skills/education/
-│   ├── socratic_questioning.md
-│   ├── metacognitive_reflection.md
-│   └── spaced_repetition.md
-└── mcp_servers/
-    └── syllabus_processor_mcp.py     # MCP server
+├── mcp.json                          # MCP servers (syllabus_processor, exam_analyzer)
+├── skills/
+│   ├── math-problem-solver/SKILL.md
+│   ├── economics-analysis/SKILL.md
+│   ├── social-science-analysis/SKILL.md
+│   └── metacognitive-tutor/SKILL.md
+├── tutor/
+│   ├── .venv/                        # private Python environment
+│   ├── syllabus_processor_mcp.py     # MCP server
+│   ├── exam_analyzer_mcp.py          # MCP server
+│   ├── tutor_dashboard.py            # dashboard API
+│   ├── dashboard/                    # React (Vite) frontend
+│   └── ...                           # helper scripts
+├── syllabi/                          # processed syllabus JSON
+├── exams/                            # processed exam JSON
+├── cheatsheets/                      # generated cheatsheets
+└── tutor_progress/                   # student progress (unified)
 ```text
 
 # Working with the Tutor
@@ -174,31 +166,21 @@ codewhale --agent metacognitive_tutor
 
 ## Dashboard
 
-```bash
-# Install Python dependencies
-pip install fastapi uvicorn recharts PyPDF2 pandas numpy
-
-# Install Node.js dependencies for dashboard
-cd dashboard
-npm install recharts axios
-npm run dev  # For development
-
-# For production build
-npm run build
-```
-
-Start the Services
+The dashboard has a FastAPI backend (`tutor_dashboard.py`) and a React (Vite)
+frontend (`dashboard/`). `./install.sh` installs the Python dependencies into a
+private venv and copies the frontend into `~/.codewhale/tutor/dashboard/`.
 
 ```bash
-# Terminal 1: Start CodeWhale with MCP servers
-codewhale --agent metacognitive_tutor
+# Terminal 1: start Codewhale (the tutor MCP servers are auto-discovered)
+codewhale
 
-# Terminal 2: Start the dashboard API
-python tutor_dashboard.py
+# Terminal 2: start the dashboard API (serves /api on :8000)
+~/.codewhale/tutor/.venv/bin/python ~/.codewhale/tutor/tutor_dashboard.py
 
-# Terminal 3: Start the React dashboard (development)
-cd dashboard && npm run dev
+# Terminal 3: start the React frontend (proxies /api to :8000)
+cd ~/.codewhale/tutor/dashboard && npm install && npm run dev
 ```
 
-Navigate to http://localhost:5173
-View student progress, exam analytics, and learning insights
+Open http://localhost:5173 to view student progress, exam analytics, and
+learning insights. For a production build, run `npm run build` in the dashboard
+directory.

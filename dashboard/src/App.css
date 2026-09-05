@@ -366,3 +366,47 @@ body {
     font-size: 0.8rem;
   }
 }
+
+/* Concept mastery bars */
+.concept-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.6rem;
+}
+
+.concept-name {
+  flex: 0 0 180px;
+  font-weight: 500;
+  color: #555;
+}
+
+.concept-bar {
+  flex: 1;
+  height: 10px;
+  background: #e9ecef;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.concept-bar-fill {
+  height: 100%;
+  background: #667eea;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.concept-bar-fill[data-trend='improving'] {
+  background: #28a745;
+}
+
+.concept-bar-fill[data-trend='declining'] {
+  background: #dc3545;
+}
+
+.concept-value {
+  flex: 0 0 56px;
+  text-align: right;
+  font-weight: 600;
+  color: #667eea;
+}

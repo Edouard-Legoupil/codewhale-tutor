@@ -22,7 +22,7 @@ def assess_weaknesses(student_id: str, syllabus_id: str) -> dict:
         progress = json.load(f)
     
     # Analyze history for patterns
-    history = progress.get("history", [])
+    history = progress.get("response_history", [])
     concept_performance = defaultdict(list)
     
     for entry in history:

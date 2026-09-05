@@ -1,5 +1,10 @@
 # learning_style_analyzer.py
 
+import json
+from pathlib import Path
+
+PROGRESS_DIR = Path.home() / ".codewhale" / "tutor_progress"
+
 def analyze_learning_style(student_id: str, syllabus_id: str) -> dict:
     """Analyze student's learning style from their responses"""
     
@@ -10,7 +15,7 @@ def analyze_learning_style(student_id: str, syllabus_id: str) -> dict:
     with open(progress_file, 'r') as f:
         progress = json.load(f)
     
-    history = progress.get("history", [])
+    history = progress.get("response_history", [])
     
     # Count indicators
     visual = 0

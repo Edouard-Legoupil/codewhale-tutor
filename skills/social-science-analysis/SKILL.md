@@ -1,12 +1,7 @@
 ---
 name: social-science-analysis
 description: Critical thinking and analytical skills for social sciences
-user-invocable: true
-allowed-tools:
-  - read
-  - ask_user_question
-  - process_syllabus
-  - generate_cheatsheet
+invocation: model+user
 ---
 
 # 🌍 Social Science Critical Analysis Framework
