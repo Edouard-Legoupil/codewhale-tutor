@@ -1,24 +1,24 @@
 # codewhale-tutor
 
-A codewhale set up designed for student to benefit from advanced tutoring
+A [codewhale](https://codewhale.net/en) set up designed for students to benefit from advanced AI tutoring within your own computer - and with the model of your choice.
 
-## Requirement → Implementation
+## Features
 
  * Multiple syllabus types → process_syllabus handles any subject from PDFs
  * Build tutoring plans → Automatic concept extraction and curriculum mapping
- * Socratic approach → metacognitive_tutor.md prompt with questioning framework
+ * Socratic approach → metacognitive_tutor prompt with questioning framework
  * Metacognition focus → Specialized prompts for self-reflection and strategy awareness
- * Track student responses → tracking_hook.py with full response history
+ * Track student responses → tracking hook  with full response history
  * Return to theory → Weakness detection triggers concept review
  * Learn from exams → process_exam identifies tested concepts and frequencies
  * Track learning stage → current_stage and concept_mastery in progress data
  * Multi-language → Language detection and support throughout
- * Cheatsheets → generate_cheatsheet for each syllabus
+ * Cheatsheets → generate cheatsheet for each syllabus
  * Recall support → Cheatsheets and spaced repetition system
  * Adaptive → Adjusts based on mastery, confidence, and learning style
- * Subject-Specific Skills → Math problem-solving, economic analysis, social science critical thinking `math_problem_solver.md`, `economics_analysis.md`, `social_science_analysis.md`
- * Web Dashboard → Visualize student progress, concept mastery, exam analytics  `tutor_dashboard.py`, `App.jsx`, `App.css`
- * Sophisticated Exam Analysis → Question classification, difficulty estimation, Bloom's taxonomy mapping, study plan generation `exam_analyzer_mcp.py`
+ * Subject-Specific Skills → Math problem-solving, economic analysis, social science critical thinking
+ * Web Dashboard → Visualize student progress, concept mastery, exam analytics
+ * Sophisticated Exam Analysis → Question classification, difficulty estimation, Bloom's taxonomy mapping, study plan generation
 
 
 
@@ -76,6 +76,10 @@ Tools available to the tutor (`syllabus_processor` MCP server):
 - `get_error_patterns` — surface recurring error types (sign, jacobian, units, …).
 - `get_calibration` — compare predicted confidence to actual accuracy.
 - `diagnose_root_cause` — trace a weak concept back to its unmet prerequisite.
+- `generate_syllabus_skill` — generate a syllabus-specific study-guide skill from the
+  processed syllabus (its modules, topics, prerequisites, and competencies).
+- `list_syllabus_skills` / `remove_syllabus_skill` — list and remove generated
+  per-syllabus skills.
 
 Tools from the `exam_analyzer` MCP server:
 

@@ -7,6 +7,7 @@ Uses the modern FastMCP API (mcp.server.fastmcp.FastMCP).
 
 import json
 import re
+import shutil
 import unicodedata
 from pathlib import Path
 from datetime import datetime
@@ -71,8 +72,9 @@ SYLLABI_DIR = Path.home() / ".codewhale" / "syllabi"
 EXAMS_DIR = Path.home() / ".codewhale" / "exams"
 PROGRESS_DIR = Path.home() / ".codewhale" / "tutor_progress"
 CHEATSHEETS_DIR = Path.home() / ".codewhale" / "cheatsheets"
+SKILLS_DIR = Path.home() / ".codewhale" / "skills"
 
-for _dir in (SYLLABI_DIR, EXAMS_DIR, PROGRESS_DIR, CHEATSHEETS_DIR):
+for _dir in (SYLLABI_DIR, EXAMS_DIR, PROGRESS_DIR, CHEATSHEETS_DIR, SKILLS_DIR):
     _dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -246,6 +248,38 @@ def _infer_prerequisites(concept_names: List[str]) -> dict:
         for i in range(1, len(entries)):
             prereqs[entries[i][1]] = [entries[i - 1][1]]
     return prereqs
+
+
+def _slugify(text: str) -> str:
+    s = _strip_accents(text).lower()
+    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+    return s or "syllabus"
+
+
+def _topological_order(concepts: List[dict]) -> List[dict]:
+    """Order concepts so prerequisites come first (Kahn's algorithm)."""
+    by_name = {c["name"]: c for c in concepts}
+    in_degree = {
+        c["name"]: len([p for p in c.get("prerequisites", []) if p in by_name])
+        for c in concepts
+    }
+    dependents = {c["name"]: [] for c in concepts}
+    for c in concepts:
+        for p in c.get("prerequisites", []):
+            if p in dependents:
+                dependents[p].append(c["name"])
+
+    queue = [c["name"] for c in concepts if in_degree[c["name"]] == 0]
+    order = []
+    while queue:
+        name = queue.pop(0)
+        order.append(by_name[name])
+        for dep in dependents[name]:
+            in_degree[dep] -= 1
+            if in_degree[dep] == 0:
+                queue.append(dep)
+
+    return order if len(order) == len(concepts) else concepts
 
 
 def _new_progress(student_id: str, syllabus_id: str) -> dict:
@@ -922,6 +956,123 @@ def diagnose_root_cause(concept: str, student_id: str, syllabus_id: str) -> str:
     if root is None:
         return f"🎯 Prerequisites for '{concept}' look fine — focus practice on '{concept}' itself."
     return f"🔍 **Root cause for '{concept}':** '{root}' (mastery {mastery.get(root, 0):.0%}). Fix this first."
+
+
+@mcp.tool()
+def generate_syllabus_skill(syllabus_id: str) -> str:
+    """Generate a syllabus-specific study-guide skill from a processed syllabus.
+
+    Creates ~/.codewhale/skills/syllabus-<id>/SKILL.md tailored to this syllabus's
+    modules, topics, prerequisites, and competencies.
+
+    Args:
+        syllabus_id: The syllabus ID (must already be processed).
+    """
+    syllabus_file = SYLLABI_DIR / f"{syllabus_id}.json"
+    if not syllabus_file.exists():
+        return f"❌ Syllabus {syllabus_id} not found — run process_syllabus first."
+
+    with open(syllabus_file, "r", encoding="utf-8") as f:
+        s = json.load(f)
+
+    concepts = s.get("concepts", [])
+    if not concepts:
+        return "❌ Syllabus has no concepts."
+
+    ordered = _topological_order(concepts)
+    objectives = s.get("learning_objectives", [])
+    language = s.get("language", "unknown")
+    name = s.get("name", syllabus_id)
+
+    slug = _slugify(syllabus_id)
+    skill_dir = SKILLS_DIR / f"syllabus-{slug}"
+    skill_dir.mkdir(parents=True, exist_ok=True)
+
+    lines = [
+        "---",
+        f"name: syllabus-{slug}",
+        f"description: Study guide for {name} ({language}). {len(concepts)} courses with prerequisite ordering, topics, and Socratic question starters.",
+        "invocation: model+user",
+        "---",
+        "",
+        f"# {name} — Study Guide",
+        "",
+        f"Generated from the processed syllabus (language: {language}). Use this to tutor the exact courses and terminology of this syllabus.",
+        "",
+    ]
+
+    if objectives:
+        lines += ["## Competencies (Compétences visées)", ""]
+        for o in objectives:
+            lines.append(f"- {o}")
+        lines.append("")
+
+    lines += ["## Study path (prerequisite order)", ""]
+    for i, c in enumerate(ordered, 1):
+        mod = f" — {c['module']}" if c.get("module") else ""
+        pr = f" (after {', '.join(c.get('prerequisites', []))})" if c.get("prerequisites") else ""
+        lines.append(f"{i}. **{c['name']}**{mod}{pr}")
+    lines.append("")
+
+    current_module = None
+    for c in ordered:
+        mod = c.get("module") or "General"
+        if mod != current_module:
+            current_module = mod
+            lines += [f"## Module: {mod}", ""]
+        lines.append(f"### {c['name']}")
+        topics = c.get("related_questions") or []
+        if topics:
+            lines.append("Topics:")
+            for t in topics[:10]:
+                lines.append(f"- {t}")
+        prereqs = c.get("prerequisites", [])
+        if prereqs:
+            lines.append(f"Prerequisites: {', '.join(prereqs)}")
+        lines.append("Socratic starters:")
+        lines.append(f'- "What do you already know about {c["name"]}?"')
+        if topics:
+            lines.append(f'- "Explain \"{topics[0]}\" in your own words."')
+        if prereqs:
+            lines.append(f'- "How does {c["name"]} build on {prereqs[0]}?"')
+        lines.append("")
+
+    (skill_dir / "SKILL.md").write_text("\n".join(lines), encoding="utf-8")
+
+    return (
+        f"✅ Generated syllabus-specific skill: **syllabus-{slug}**\n\n"
+        f"**Location:** {skill_dir / 'SKILL.md'}\n"
+        f"**Courses:** {len(concepts)} (in prerequisite order)\n"
+        f"**Competencies:** {len(objectives)}\n\n"
+        f"Activate with: /skill syllabus-{slug}"
+    )
+
+
+@mcp.tool()
+def list_syllabus_skills() -> str:
+    """List the generated per-syllabus study-guide skills."""
+    dirs = sorted(SKILLS_DIR.glob("syllabus-*"))
+    if not dirs:
+        return "📋 No generated syllabus skills found."
+    lines = [f"📋 **{len(dirs)} generated syllabus skill(s):**", ""]
+    for d in dirs:
+        lines.append(f"  - {d.name}")
+    return "\n".join(lines)
+
+
+@mcp.tool()
+def remove_syllabus_skill(syllabus_id: str) -> str:
+    """Remove a generated per-syllabus study-guide skill.
+
+    Args:
+        syllabus_id: The syllabus ID whose generated skill should be removed.
+    """
+    slug = _slugify(syllabus_id)
+    skill_dir = SKILLS_DIR / f"syllabus-{slug}"
+    if not skill_dir.exists():
+        return f"❌ No generated skill for syllabus '{syllabus_id}' (looked for {skill_dir})."
+    shutil.rmtree(skill_dir)
+    return f"🗑️ Removed generated skill: syllabus-{slug}"
 
 
 if __name__ == "__main__":

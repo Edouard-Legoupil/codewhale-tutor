@@ -69,6 +69,14 @@ for slug in math-problem-solver economics-analysis social-science-analysis metac
   fi
 done
 
+# Remove any generated per-syllabus skills (syllabus-*)
+for d in "$SKILLS_DIR"/syllabus-*; do
+  if [ -d "$d" ]; then
+    rm -rf "$d"
+    echo "  removed $d"
+  fi
+done
+
 # --- 3. Remove the tutor install directory -----------------------------------
 if [ -d "$INSTALL_DIR" ]; then
   log "Removing $INSTALL_DIR"
