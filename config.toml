@@ -1,0 +1,48 @@
+# Tutor Configuration
+
+# Use metacognitive tutor by default
+default_agent = "metacognitive_tutor"
+
+# Enable the syllabus processor MCP server
+[[mcp_servers]]
+name = "syllabus_processor"
+transport = "stdio"
+command = "python"
+args = ["/path/to/syllabus_processor_mcp.py"]
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+
+# Educational hooks
+[[hooks]]
+name = "track-learning"
+type = "post_agent"
+match = "*"
+command = "python /path/to/tracking_hook.py"
+description = "Track student progress and provide feedback"
+
+[[hooks]]
+name = "assess-weaknesses"
+type = "post_agent"
+match = "*"
+command = "python /path/to/weakness_assessment_hook.py"
+description = "Assess student weaknesses based on responses"
+
+# Enable educational skills
+enabled_skills = ["*"]
+skill_paths = [
+    "~/.codewhale/skills/education",
+    "./.codewhale/skills/education"
+]
+
+# Session management for continuous learning
+persistent_sessions = true
+session_save_interval = 60
+
+# Multi-language support
+default_language = "auto"
+language_detection = true
+
+# Educational settings
+educational_mode = true
+verbose_explanations = true
+show_reasoning = true

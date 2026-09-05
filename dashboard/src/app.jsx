@@ -1,0 +1,368 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: #f0f2f5;
+  color: #333;
+}
+
+.app-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.app-header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.header-nav button {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+  margin-left: 0.5rem;
+}
+
+.header-nav button:hover {
+  background: rgba(255,255,255,0.3);
+  transform: translateY(-2px);
+}
+
+.app-main {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.dashboard {
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: transform 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.stat-card h3, .stat-card h4 {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.chart-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.chart-card h3 {
+  margin-bottom: 1rem;
+  color: #555;
+}
+
+.students-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  margin-bottom: 2rem;
+}
+
+.students-section h3 {
+  margin-bottom: 1rem;
+  color: #555;
+}
+
+.students-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.student-card {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.student-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 2px 12px rgba(102, 126, 234, 0.2);
+  transform: translateY(-2px);
+}
+
+.student-avatar {
+  font-size: 2.5rem;
+  margin-right: 1rem;
+}
+
+.student-info h4 {
+  margin-bottom: 0.2rem;
+}
+
+.student-info p {
+  font-size: 0.8rem;
+  color: #666;
+  margin: 0.1rem 0;
+}
+
+.view-btn {
+  margin-top: 0.5rem;
+  padding: 0.3rem 1rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.2s;
+}
+
+.view-btn:hover {
+  background: #5a6fd6;
+}
+
+.recent-activity {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.recent-activity h3 {
+  margin-bottom: 1rem;
+  color: #555;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.activity-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.8rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.activity-student {
+  font-weight: 600;
+  color: #667eea;
+}
+
+.activity-confidence {
+  color: #28a745;
+}
+
+/* Student View */
+.student-view {
+  animation: fadeIn 0.5s ease;
+}
+
+.back-btn {
+  padding: 0.5rem 1.5rem;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  transition: background 0.2s;
+}
+
+.back-btn:hover {
+  background: #5a6268;
+}
+
+.student-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.syllabus-selector {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.syllabus-selector button {
+  padding: 0.5rem 1.5rem;
+  background: #e9ecef;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.syllabus-selector button.active {
+  background: #667eea;
+  color: white;
+}
+
+.syllabus-selector button:hover:not(.active) {
+  background: #dee2e6;
+}
+
+.weakness-section {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.weakness-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.weakness-tag {
+  background: #ffc107;
+  color: #333;
+  padding: 0.3rem 1rem;
+  border-radius: 15px;
+  font-size: 0.9rem;
+}
+
+.recent-responses {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.recent-responses h3 {
+  margin-bottom: 1rem;
+  color: #555;
+}
+
+.responses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.response-item {
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.response-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.response-concept {
+  font-weight: 600;
+  color: #667eea;
+}
+
+.response-confidence {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.response-text {
+  color: #555;
+  margin-bottom: 0.5rem;
+}
+
+.response-meta {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .app-main {
+    padding: 1rem;
+  }
+  
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .students-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .header-nav button {
+    padding: 0.3rem 1rem;
+    font-size: 0.8rem;
+  }
+}
