@@ -20,41 +20,7 @@ A codewhale set up designed for student to benefit from advanced tutoring
  * Web Dashboard → Visualize student progress, concept mastery, exam analytics  `tutor_dashboard.py`, `App.jsx`, `App.css`
  * Sophisticated Exam Analysis → Question classification, difficulty estimation, Bloom's taxonomy mapping, study plan generation `exam_analyzer_mcp.py`
 
-## Architecture
 
-```text
-┌────────────────────────────────────────────────────────────────┐
-│                     CodeWhale Tutor System                     │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │  Syllabus    │  │  Exam Data   │  │  Student     │          │
-│  │  Processor   │  │  Analyzer    │  │  Tracker     │          │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
-│         │                 │                 │                  │
-│         └─────────────────┼─────────────────┘                  │
-│                           │                                    │
-│                  ┌────────▼────────┐                           │
-│                  │  MCP Learning   │                           │
-│                  │     Engine      │                           │
-│                  └────────┬────────┘                           │
-│                           │                                    │
-│         ┌─────────────────┼─────────────────┐                  │
-│         │                 │                 │                  │
-│  ┌──────▼───────┐ ┌───────▼────────┐ ┌──────▼──────┐           │
-│  │  Socratic    │ │  Metacognition │ │  Adaptive   │           │
-│  │  Tutor Agent │ │   Agent        │ │  Planner    │           │
-│  └──────────────┘ └────────────────┘ └─────────────┘           │
-│                                                                │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │              Student Progress Database                  │   │
-│  │  - Learning stages per syllabus                         │   │
-│  │  - Concept mastery scores                               │   │
-│  │  - Response history                                     │   │
-│  │  - Weakness identification                              │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────────────┘
-```
 
 ## Install / Uninstall
 
@@ -159,6 +125,42 @@ Open http://localhost:5173 to view student progress, exam analytics, and
 learning insights. For a production build, run `npm run build` in the dashboard
 directory.
 
+
+## Architecture
+
+```text
+┌────────────────────────────────────────────────────────────────┐
+│                     CodeWhale Tutor System                     │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │  Syllabus    │  │  Exam Data   │  │  Student     │          │
+│  │  Processor   │  │  Analyzer    │  │  Tracker     │          │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
+│         │                 │                 │                  │
+│         └─────────────────┼─────────────────┘                  │
+│                           │                                    │
+│                  ┌────────▼────────┐                           │
+│                  │  MCP Learning   │                           │
+│                  │     Engine      │                           │
+│                  └────────┬────────┘                           │
+│                           │                                    │
+│         ┌─────────────────┼─────────────────┐                  │
+│         │                 │                 │                  │
+│  ┌──────▼───────┐ ┌───────▼────────┐ ┌──────▼──────┐           │
+│  │  Socratic    │ │  Metacognition │ │  Adaptive   │           │
+│  │  Tutor Agent │ │   Agent        │ │  Planner    │           │
+│  └──────────────┘ └────────────────┘ └─────────────┘           │
+│                                                                │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │              Student Progress Database                  │   │
+│  │  - Learning stages per syllabus                         │   │
+│  │  - Concept mastery scores                               │   │
+│  │  - Response history                                     │   │
+│  │  - Weakness identification                              │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────────────────┘
+```
 
 ## File Structure Summary
 
