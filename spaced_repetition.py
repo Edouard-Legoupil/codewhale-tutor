@@ -36,8 +36,11 @@ class SpacedRepetition:
             0.9: timedelta(days=14)
         }
         
-        # Determine interval
-        interval = intervals.get(int(mastery * 10) / 10, timedelta(days=1))
+        # Determine interval (clamp high mastery to the longest interval)
+        key = int(mastery * 10) / 10
+        if key > 0.9:
+            key = 0.9
+        interval = intervals.get(key, timedelta(days=14))
         next_review = datetime.now() + interval
         
         self.progress["review_queue"].append({
@@ -59,3 +62,8 @@ class SpacedRepetition:
                 due.append(item)
         
         return due
+    
+    def save_progress(self):
+        """Persist progress, preserving the canonical progress schema."""
+        with open(self.progress_file, 'w', encoding='utf-8') as f:
+            json.dump(self.progress, f, indent=2, default=str)

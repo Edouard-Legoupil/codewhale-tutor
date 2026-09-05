@@ -47,7 +47,7 @@ except json.JSONDecodeError:
     raise SystemExit(0)
 
 servers = data.get("servers", {})
-for name in ("syllabus_processor", "exam_analyzer"):
+for name in ("syllabus_processor", "exam_analyzer", "math_engine", "practice_engine"):
     servers.pop(name, None)
 
 if not servers and "servers" in data:
@@ -62,7 +62,7 @@ fi
 
 # --- 2. Remove installed skills ----------------------------------------------
 log "Removing installed skills"
-for slug in math-problem-solver economics-analysis social-science-analysis metacognitive-tutor; do
+for slug in math-problem-solver economics-analysis social-science-analysis metacognitive-tutor linear-algebra probability-statistics python-programming data-visualization exam-technique; do
   if [ -d "$SKILLS_DIR/$slug" ]; then
     rm -rf "$SKILLS_DIR/$slug"
     echo "  removed $SKILLS_DIR/$slug"

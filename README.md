@@ -93,16 +93,23 @@ then drop syllabus/exam PDFs into `~/.codewhale/syllabi` and
 
 ```text
 ~/.codewhale/
-├── mcp.json                          # MCP servers (syllabus_processor, exam_analyzer)
+├── mcp.json                          # MCP servers (syllabus_processor, exam_analyzer, math_engine, practice_engine)
 ├── skills/
+│   ├── metacognitive-tutor/SKILL.md
 │   ├── math-problem-solver/SKILL.md
+│   ├── linear-algebra/SKILL.md
+│   ├── probability-statistics/SKILL.md
+│   ├── python-programming/SKILL.md
+│   ├── data-visualization/SKILL.md
+│   ├── exam-technique/SKILL.md
 │   ├── economics-analysis/SKILL.md
-│   ├── social-science-analysis/SKILL.md
-│   └── metacognitive-tutor/SKILL.md
+│   └── social-science-analysis/SKILL.md
 ├── tutor/
 │   ├── .venv/                        # private Python environment
 │   ├── syllabus_processor_mcp.py     # MCP server
 │   ├── exam_analyzer_mcp.py          # MCP server
+│   ├── math_engine_mcp.py            # MCP server (SymPy)
+│   ├── practice_engine_mcp.py        # MCP server (exercises/grading)
 │   ├── tutor_dashboard.py            # dashboard API
 │   ├── dashboard/                    # React (Vite) frontend
 │   └── ...                           # helper scripts
@@ -114,55 +121,65 @@ then drop syllabus/exam PDFs into `~/.codewhale/syllabi` and
 
 # Working with the Tutor
 
-```bash
-# In the CodeWhale TUI:
+Tutoring is driven by the `metacognitive-tutor` skill plus four MCP servers.
+There are no bespoke slash commands — the tutor agent calls these tools for you
+when you ask in plain language.
 
-# Process a new syllabus
-> /process_syllabus ~/.codewhale/syllabi/economics_101.pdf economics
+```text
+1. Put syllabus/exam PDFs in:
+     ~/.codewhale/syllabi
+     ~/.codewhale/exams
 
-# Process an exam
-> /process_exam ~/.codewhale/exams/economics_exam_2023.pdf economics exam_2023
+2. Start Codewhale and activate the tutor:
+     /skill metacognitive-tutor
 
-# Start a tutoring session
-> /tutor start economics
-
-# The tutor will:
-# 1. Analyze your progress (if any)
-# 2. Identify weak concepts
-# 3. Begin Socratic questioning
-# 4. Generate cheatsheets as needed
-# 5. Track your responses
-
-# View progress
-> /progress economics
-
-# Focus on a specific concept
-> /tutor focus "New Liberalism"
-
-# Generate a cheatsheet
-> /cheatsheet economics
-
-# Switch language
-> /language French
-> /language English
-> /language auto
-
-# Review weaknesses
-> /weaknesses economics
-
-# Recall training
-> /recall economics
-
-# Analyze an exam
-> /analyze_exam ~/.codewhale/exams/math_2023.pdf math_2023
-
-# Generate a study plan
-> /generate_study_plan math_2023 student1 7
-
-# Compare exams
-> /compare_exams math_2023 math_2024 physics_2023
-
+3. Ask naturally, e.g.:
+     "Process algebra_3.pdf as `algebra3` and plan my revision."
+     "I'm stuck on diagonalisation — quiz me Socratically."
+     "Analyze proba_2023.pdf and make a 7-day study plan."
 ```
+
+Tools available to the tutor (`syllabus_processor` MCP server):
+
+- `process_syllabus` — extract concepts and objectives from a syllabus PDF or Markdown file.
+- `process_exam` — extract questions and tested concepts from an exam PDF.
+- `generate_cheatsheet` — write a Markdown cheatsheet for a syllabus or concept.
+- `get_student_progress` / `update_student_progress` — read/write mastery.
+- `identify_weaknesses` — list concepts with mastery below 60%.
+- `suggest_next_topic` — recommend what to study next.
+- `schedule_review` / `get_due_reviews` — spaced-repetition scheduling.
+- `get_learning_objectives` — list a syllabus's competencies (Compétences visées).
+- `record_attempt` — log a practice attempt with confidence + correctness.
+- `get_error_patterns` — surface recurring error types (sign, jacobian, units, …).
+- `get_calibration` — compare predicted confidence to actual accuracy.
+- `diagnose_root_cause` — trace a weak concept back to its unmet prerequisite.
+
+Tools from the `exam_analyzer` MCP server:
+
+- `analyze_exam` — classify questions, estimate difficulty, map Bloom's levels.
+- `classify_question` — classify a single question.
+- `generate_study_plan` — build a day-by-day plan from an exam analysis.
+- `compare_exams` — compare difficulty and coverage across exams.
+
+Tools from the `math_engine` MCP server (SymPy):
+
+- `check_math` — simplify/evaluate an expression and check it against an expected
+  result (supports derivatives, integrals, and eigenvalues).
+- `solve_equation` — solve an equation for a variable.
+- `sanity_check` — flag implausible results (probability out of range, negative variance, …).
+
+Tools from the `practice_engine` MCP server:
+
+- `generate_exercises` — generate parameterized practice problems per concept.
+- `grade_answer` — grade a student's answer against the expected result.
+- `generate_mock_exam` — build a timed mock exam from a syllabus.
+- `generate_bug_hunt` — produce a worked solution with a planted error to find.
+
+Progress is written to `~/.codewhale/tutor_progress/` and can be inspected in the
+dashboard at `http://localhost:5173`. The subject skills (`math-problem-solver`,
+`linear-algebra`, `probability-statistics`, `python-programming`,
+`data-visualization`, `exam-technique`, `economics-analysis`, `social-science-analysis`) load
+automatically when their domain is relevant.
 
 ## Dashboard
 

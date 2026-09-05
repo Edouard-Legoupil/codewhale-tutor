@@ -61,6 +61,7 @@ class StudentProgress(BaseModel):
     last_session: Optional[str]
     session_count: int
     exam_scores: List[Dict]
+    learning_objectives: List[str] = []
 
 class ExamAnalysis(BaseModel):
     exam_id: str
@@ -127,10 +128,12 @@ async def get_student_progress(student_id: str, syllabus_id: Optional[str] = Non
         # Load syllabus info
         syllabus_file = SYLLABI_DIR / f"{syllabus_id}.json"
         syllabus_name = syllabus_id
+        learning_objectives = []
         if syllabus_file.exists():
             with open(syllabus_file, 'r') as f:
                 syllabus_data = json.load(f)
                 syllabus_name = syllabus_data.get('name', syllabus_id)
+                learning_objectives = syllabus_data.get('learning_objectives', [])
         
         concept_mastery = []
         for concept, score in data.get('concept_mastery', {}).items():
@@ -162,7 +165,8 @@ async def get_student_progress(student_id: str, syllabus_id: Optional[str] = Non
             response_history=data.get('response_history', [])[-20:],  # Last 20
             last_session=data.get('last_session'),
             session_count=len(data.get('response_history', [])) // 5 + 1,
-            exam_scores=data.get('exam_scores', [])
+            exam_scores=data.get('exam_scores', []),
+            learning_objectives=learning_objectives
         )
     else:
         # Get all syllabi progress
@@ -208,7 +212,26 @@ async def get_student_analytics(student_id: str):
     
     # Most challenging concepts
     challenging = sorted(all_concepts.items(), key=lambda x: min(x[1]) if x[1] else 0)[:5]
-    
+
+    # Error patterns and calibration from practice attempts
+    error_counts = {}
+    n_attempts = 0
+    overconfidence_sum = 0.0
+    for file in progress_files:
+        with open(file, 'r') as f:
+            data = json.load(f)
+        for a in data.get('attempts', []):
+            n_attempts += 1
+            if not a.get('correct'):
+                t = a.get('error_type') or 'other'
+                error_counts[t] = error_counts.get(t, 0) + 1
+            pred = a.get('predicted_confidence', 50) / 100.0
+            actual = 1.0 if a.get('correct') else 0.0
+            overconfidence_sum += max(0, pred - actual)
+
+    error_patterns = sorted(error_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    overconfidence = overconfidence_sum / n_attempts if n_attempts else 0.0
+
     return {
         "student_id": student_id,
         "total_concepts": len(all_concepts),
@@ -216,7 +239,10 @@ async def get_student_analytics(student_id: str):
         "total_sessions": total_sessions,
         "learning_rate": learning_rate,
         "most_challenging": [c[0] for c in challenging if c[0] not in weak_concepts],
-        "concept_progress": {c: scores[-1] if scores else 0 for c, scores in all_concepts.items()}
+        "concept_progress": {c: scores[-1] if scores else 0 for c, scores in all_concepts.items()},
+        "error_patterns": error_patterns,
+        "overconfidence": overconfidence,
+        "attempt_count": n_attempts
     }
 
 @app.get("/api/exams")

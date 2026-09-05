@@ -22,6 +22,8 @@ SKILLS_DIR="$CW_HOME/skills"
 
 MCP_NAME_SYLLABUS="syllabus_processor"
 MCP_NAME_EXAM="exam_analyzer"
+MCP_NAME_MATH="math_engine"
+MCP_NAME_PRACTICE="practice_engine"
 
 log()  { printf '\033[1;34m[install]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[warn]\033[0m %s\n' "$*"; }
@@ -44,6 +46,8 @@ cp -f "$SCRIPT_DIR/learning_style_analyzer.py"     "$INSTALL_DIR/"
 cp -f "$SCRIPT_DIR/spaced_repetition.py"           "$INSTALL_DIR/"
 cp -f "$SCRIPT_DIR/tracking_hook.py"               "$INSTALL_DIR/"
 cp -f "$SCRIPT_DIR/weakness_assessment_hook.py"    "$INSTALL_DIR/"
+cp -f "$SCRIPT_DIR/math_engine_mcp.py"             "$INSTALL_DIR/"
+cp -f "$SCRIPT_DIR/practice_engine_mcp.py"         "$INSTALL_DIR/"
 
 # --- 1b. Dashboard frontend --------------------------------------------------
 log "Copying dashboard frontend"
@@ -56,11 +60,11 @@ if [ ! -x "$VENV_DIR/bin/python" ]; then
   python3 -m venv "$VENV_DIR" || die "Could not create a virtualenv. Install python3-venv and retry."
 fi
 
-log "Installing Python dependencies (mcp, PyPDF2, markdown, numpy, fastapi, uvicorn)"
+log "Installing Python dependencies (mcp, PyPDF2, markdown, numpy, fastapi, uvicorn, sympy)"
 "$VENV_DIR/bin/python" -m pip install --quiet --upgrade pip
 # mcp pulls a modern pydantic; installing it here also fixes the global
 # pydantic<2.7 "pydantic._internal._signature" incompatibility in this venv.
-"$VENV_DIR/bin/python" -m pip install --quiet mcp PyPDF2 markdown numpy fastapi uvicorn
+"$VENV_DIR/bin/python" -m pip install --quiet mcp PyPDF2 markdown numpy fastapi uvicorn sympy
 
 # --- 3. Data directories -----------------------------------------------------
 log "Creating data directories"
@@ -79,6 +83,11 @@ install_skill math-problem-solver       "$SCRIPT_DIR/skills/math-problem-solver/
 install_skill economics-analysis        "$SCRIPT_DIR/skills/economics-analysis/SKILL.md"
 install_skill social-science-analysis   "$SCRIPT_DIR/skills/social-science-analysis/SKILL.md"
 install_skill metacognitive-tutor       "$SCRIPT_DIR/skills/metacognitive-tutor/SKILL.md"
+install_skill linear-algebra            "$SCRIPT_DIR/skills/linear-algebra/SKILL.md"
+install_skill probability-statistics    "$SCRIPT_DIR/skills/probability-statistics/SKILL.md"
+install_skill python-programming        "$SCRIPT_DIR/skills/python-programming/SKILL.md"
+install_skill data-visualization        "$SCRIPT_DIR/skills/data-visualization/SKILL.md"
+install_skill exam-technique            "$SCRIPT_DIR/skills/exam-technique/SKILL.md"
 
 # --- 5. Register MCP servers (merge into mcp.json, never clobber) ------------
 log "Registering MCP servers in $MCP_JSON"
@@ -86,8 +95,12 @@ MCP_JSON="$MCP_JSON" \
 VENV_PY="$VENV_DIR/bin/python" \
 SYLLABUS_SRV="$INSTALL_DIR/syllabus_processor_mcp.py" \
 EXAM_SRV="$INSTALL_DIR/exam_analyzer_mcp.py" \
+MATH_SRV="$INSTALL_DIR/math_engine_mcp.py" \
+PRACTICE_SRV="$INSTALL_DIR/practice_engine_mcp.py" \
 MCP_NAME_SYLLABUS="$MCP_NAME_SYLLABUS" \
 MCP_NAME_EXAM="$MCP_NAME_EXAM" \
+MCP_NAME_MATH="$MCP_NAME_MATH" \
+MCP_NAME_PRACTICE="$MCP_NAME_PRACTICE" \
 python3 - <<'PY'
 import json
 import os
@@ -130,6 +143,8 @@ def stdio_entry(script: str) -> dict:
 
 data["servers"][os.environ["MCP_NAME_SYLLABUS"]] = stdio_entry(os.environ["SYLLABUS_SRV"])
 data["servers"][os.environ["MCP_NAME_EXAM"]] = stdio_entry(os.environ["EXAM_SRV"])
+data["servers"][os.environ["MCP_NAME_MATH"]] = stdio_entry(os.environ["MATH_SRV"])
+data["servers"][os.environ["MCP_NAME_PRACTICE"]] = stdio_entry(os.environ["PRACTICE_SRV"])
 
 mcp_json.write_text(json.dumps(data, indent=2) + "\n")
 PY

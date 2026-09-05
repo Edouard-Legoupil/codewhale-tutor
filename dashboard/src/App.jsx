@@ -192,6 +192,27 @@ function StudentView({ student, onBack }) {
         </div>
       )}
 
+      {!loading && analytics && (analytics.error_patterns?.length > 0 || analytics.overconfidence > 0) && (
+        <div className="chart-card">
+          <h3>🔍 Error patterns & calibration</h3>
+          {analytics.error_patterns?.length > 0 && (
+            <div className="weakness-tags">
+              {analytics.error_patterns.map(([t, n]) => (
+                <span className="weakness-tag" key={t}>{t}: {n}</span>
+              ))}
+            </div>
+          )}
+          {analytics.overconfidence > 0 && (
+            <p className="response-text">
+              Overconfidence: {pct(analytics.overconfidence)} (predicted confidence above actual accuracy)
+            </p>
+          )}
+          {analytics.attempt_count != null && (
+            <p className="response-meta">{analytics.attempt_count} practice attempts recorded</p>
+          )}
+        </div>
+      )}
+
       {!loading && progressList.length > 0 && (
         <>
           <div className="syllabus-selector">
@@ -221,6 +242,19 @@ function StudentView({ student, onBack }) {
                   <div className="weakness-tags">
                     {current.weaknesses.map((w) => (
                       <span className="weakness-tag" key={w}>{w}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {current.learning_objectives && current.learning_objectives.length > 0 && (
+                <div className="chart-card">
+                  <h3>🎯 Competencies (Compétences visées)</h3>
+                  <div className="responses-list">
+                    {current.learning_objectives.map((o, i) => (
+                      <div className="response-item" key={i}>
+                        <span className="response-concept">{i + 1}.</span> <span className="response-text">{o}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
