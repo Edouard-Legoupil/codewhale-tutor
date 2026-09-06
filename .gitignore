@@ -1,1 +1,9 @@
 syllabus_example.md
+__pycache__/
+*.pyc
+.codewhale/
+node_modules/
+dist/
+
+brevet/*
+L2-Miash/*

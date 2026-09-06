@@ -1075,5 +1075,75 @@ def remove_syllabus_skill(syllabus_id: str) -> str:
     return f"🗑️ Removed generated skill: syllabus-{slug}"
 
 
+@mcp.tool()
+def sync_library() -> str:
+    """Rebuild the tutor library from the raw documents on disk.
+
+    Scans `~/.codewhale/syllabi` and `~/.codewhale/exams` for Markdown/plain-text/PDF
+    documents, (re)builds the organised syllabus registry, regenerates cheatsheets,
+    and infers practice/mock exams. Use this after adding or editing documents.
+    """
+    try:
+        import library
+    except ImportError:
+        return "❌ library.py is not installed alongside the MCP server."
+    summary = library.sync_library()
+    return library.render_sync_summary(summary)
+
+
+@mcp.tool()
+def get_competence_model(syllabus_id: str) -> str:
+    """Return the layered learning model for a syllabus.
+
+    This exposes the separation described in the tutoring model: domains,
+    observable competencies (stable ids, types, prerequisites), the prerequisite
+    graph, and the adaptive next-action recommendation produced by the
+    pedagogical engine. Use this to decide *what to work on next* with evidence,
+    instead of just taking "the next exercise".
+    """
+    import json
+    try:
+        import library
+        import tutor_engine
+    except ImportError:
+        return "❌ library.py / tutor_engine.py are not installed alongside the MCP server."
+
+    p = library.SYLLABI_DIR / f"{syllabus_id}.json"
+    if not p.exists():
+        return f"Syllabus '{syllabus_id}' not found. Run sync_library first."
+
+    data = json.loads(p.read_text(encoding="utf-8"))
+    competences = data.get("competences", [])
+
+    # Derive the learner state from any progress files for this syllabus.
+    name_to_id = {c.get("name"): c.get("id") for c in competences}
+    learner = {}
+    for f in sorted(library.PROGRESS_DIR.glob(f"*_{syllabus_id}.json")):
+        try:
+            with open(f, "r", encoding="utf-8") as fh:
+                pd = json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            continue
+        st = tutor_engine.build_learner_state(pd)
+        for name, s in st.items():
+            learner[name_to_id.get(name, name)] = s
+
+    recommendation = tutor_engine.next_action(competences, learner)
+    return json.dumps({
+        "syllabus_id": syllabus_id,
+        "name": data.get("name"),
+        "discipline": data.get("discipline"),
+        "source_status": data.get("source_status"),
+        "domaines": [d.get("name") for d in data.get("domaines", [])],
+        "competences": [
+            {"id": c["id"], "intitule": c.get("intitule", c["name"]), "type": c.get("type", []),
+             "prerequis": c.get("prerequis", []), "source_status": c.get("source_status")}
+            for c in competences
+        ],
+        "graph": data.get("competence_graph", {"nodes": [], "edges": []}),
+        "next_action": recommendation,
+    }, ensure_ascii=False, indent=2)
+
+
 if __name__ == "__main__":
     mcp.run()

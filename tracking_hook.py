@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """
-Track student learning progress and update weaknesses
+Track student responses as *evidence*, diagnose the nature of errors, and
+update the inferred mastery state.
+
+This hook is the observation layer of the pedagogical loop described in
+``approche_modelisation_tutorat_ia.md``: every interaction appends evidence
+(attempt, correctness, error type, autonomy), which the engine turns into a
+five-state mastery estimate (non_abordé → maîtrisé).
 """
 
 import json
@@ -9,6 +15,11 @@ import re
 import unicodedata
 from pathlib import Path
 from datetime import datetime
+
+try:
+    import tutor_engine
+except ImportError:  # pragma: no cover - hook still works without the engine
+    tutor_engine = None
 
 PROGRESS_DIR = Path.home() / ".codewhale" / "tutor_progress"
 PROGRESS_DIR.mkdir(parents=True, exist_ok=True)
@@ -57,19 +68,35 @@ def analyze_student_response(question: str, response: str) -> dict:
 
     return analysis
 
+
+def _update_mastery(current, correct, confidence):
+    """Move a 0..1 mastery estimate toward the latest observation."""
+    if correct is True:
+        base = current if current is not None else 0.5
+        return round(min(1.0, base + 0.25), 3)
+    if correct is False:
+        base = current if current is not None else 0.4
+        return round(max(0.0, base - 0.25), 3)
+    return round((confidence or 50) / 100.0, 3)
+
+
 def main():
     data = json.loads(sys.stdin.read())
-    
+
     student_id = data.get('student_id', 'unknown')
     syllabus_id = data.get('syllabus_id', 'unknown')
     question = data.get('question', '')
     response = data.get('response', '')
     concept = data.get('concept', 'general')
-    
-    # Analyze response
+    correct = data.get('correct')  # optional explicit verdict
+    support = data.get('support', 'independent')  # independent | guided | prompted
+    transfer = bool(data.get('transfer', False))
+
     analysis = analyze_student_response(question, response)
-    
-    # Load progress (canonical schema, preserving any existing keys)
+    diagnosis = None
+    if tutor_engine:
+        diagnosis = tutor_engine.diagnose_error(question, response, correct, analysis)
+
     progress_file = PROGRESS_DIR / f"{student_id}_{syllabus_id}.json"
     if progress_file.exists():
         with open(progress_file, 'r') as f:
@@ -80,46 +107,67 @@ def main():
     progress.setdefault("student_id", student_id)
     progress.setdefault("syllabus_id", syllabus_id)
     progress.setdefault("response_history", [])
+    progress.setdefault("attempts", [])
     progress.setdefault("weaknesses", [])
     progress.setdefault("concept_mastery", {})
     progress.setdefault("current_stage", 0)
     progress.setdefault("last_session", None)
 
-    # Record interaction
-    progress["response_history"].append({
+    # Evidence: one attempt per observation.
+    attempt = {
         "timestamp": datetime.now().isoformat(),
+        "concept": concept,
+        "correct": correct,
+        "error_type": diagnosis["primary"] if diagnosis else data.get('error_type'),
+        "predicted_confidence": analysis["confidence"],
+        "support": support,
+        "transfer": transfer,
+    }
+    progress["attempts"].append(attempt)
+
+    # Observable trace of the interaction.
+    progress["response_history"].append({
+        "timestamp": attempt["timestamp"],
         "concept": concept,
         "question": question,
         "response": response,
         "confidence": analysis["confidence"],
-        "analysis": analysis
+        "analysis": analysis,
+        "diagnosis": diagnosis,
     })
+
+    # Inferred mastery + weakness bookkeeping.
+    progress["concept_mastery"][concept] = _update_mastery(
+        progress["concept_mastery"].get(concept), correct, analysis["confidence"])
+
+    evidence = tutor_engine.build_evidence([
+        a for a in progress["attempts"] if a.get("concept") == concept
+    ]) if tutor_engine else {}
+    state = tutor_engine.mastery_state(progress["concept_mastery"][concept], evidence) if tutor_engine else "en_cours"
+
+    if state in ("non_aborde", "en_cours") and concept not in progress["weaknesses"]:
+        progress["weaknesses"].append(concept)
+    elif state in ("acquis", "maitrise") and concept in progress["weaknesses"]:
+        progress["weaknesses"].remove(concept)
+
     progress["last_session"] = datetime.now().isoformat()
 
-    # Update weaknesses
-    if analysis["confidence"] < 40 and concept not in progress.get("weaknesses", []):
-        progress["weaknesses"].append(concept)
-    
-    # Save progress
     with open(progress_file, 'w') as f:
         json.dump(progress, f, indent=2)
-    
-    # Provide feedback (optional)
-    feedback = ""
-    if analysis["strategy_mentioned"]:
-        feedback = "Great job explaining your strategy!"
-    elif analysis["confidence"] > 70:
-        feedback = "I can see you're confident in this. Let's challenge you further!"
-    elif analysis["confidence"] < 40:
-        feedback = "Let's slow down and review this concept together."
-    
-    if feedback:
+
+    # Feedback grounded in the diagnostic (adaptation before repetition).
+    if diagnosis:
         print(json.dumps({
             "decision": "allow",
-            "system_message": f"🧠 {feedback}"
+            "system_message": f"🧠 {diagnosis['label']}\n\n{diagnosis['action']}",
+            "diagnosis": diagnosis,
+            "mastery_state": state,
         }))
+    elif analysis["strategy_mentioned"]:
+        print(json.dumps({"decision": "allow", "system_message": "🧠 Great job explaining your strategy!"}))
     else:
-        print(json.dumps({"decision": "allow"}))
+        print(json.dumps({"decision": "allow", "mastery_state": state}))
+
 
 if __name__ == "__main__":
     main()

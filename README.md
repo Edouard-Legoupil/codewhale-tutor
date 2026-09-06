@@ -21,6 +21,43 @@ A [codewhale](https://codewhale.net/en) set up designed for students to benefit 
  * Sophisticated Exam Analysis → Question classification, difficulty estimation, Bloom's taxonomy mapping, study plan generation
 
 
+## User journey
+
+1. **Drop documents.** Put syllabi and exams in `~/.codewhale/syllabi` and
+   `~/.codewhale/exams` as Markdown (`.md`), plain text (`.txt`), or PDF. One file
+   can describe one or more syllabi, and you can keep adding files over time.
+2. **The library builds itself.** The dashboard — or the tutor agent via
+   `sync_library` — scans both folders, organises the concepts and objectives into
+   a per-syllabus registry, and infers two useful artefacts for every syllabus:
+   a **cheatsheet** (`~/.codewhale/cheatsheets/<id>_cheatsheet.md`) and an
+   **inferred mock exam** (`~/.codewhale/exams/<id>_mock.json`).
+3. **Keep adding documents.** Adding a file to the syllabus folder updates the
+   registry and regenerates the related cheatsheet + mock exam. Adding a file to the
+   exam folder links it to its syllabus and updates the syllabus, the exam list, and
+   the cheatsheet's exam tips.
+4. **Everything is visible in the dashboard** at `http://localhost:5173`: syllabi
+   (concepts, objectives, sources), generated cheatsheets, real exams and inferred
+   mock exams, plus student progress.
+
+### Document conventions
+
+- By default a syllabus's `id` is its filename stem. Two files merge into one
+  syllabus when they share an `id`.
+- Optional front matter at the top of a Markdown file overrides the defaults and
+  lets you be explicit:
+
+  ````
+  ---
+  id: algebra3            # syllabus id (merge key)
+  name: Algebra III       # display name
+  language: French        # auto-detected if omitted
+  ---
+  # ...course content (# = module, ## = concept)…
+  ````
+
+- An exam file links to a syllabus with front matter `syllabus_id: algebra3`; without
+  it, the library matches it to the syllabus whose concepts overlap the most.
+
 
 ## Install / Uninstall
 
@@ -58,7 +95,7 @@ There are no bespoke slash commands — the tutor agent calls these tools for yo
 when you ask in plain language.
 
 
-1. Put syllabus/exam PDFs in:
+1. Put syllabus/exam documents (`.md`, `.txt`, or PDF) in:
      ~/.codewhale/syllabi
      ~/.codewhale/exams
 
@@ -69,13 +106,19 @@ when you ask in plain language.
 ```
 
 3. Ask naturally, e.g.:
-     "Process algebra_3.pdf as `algebra3` and plan my revision."
+     "Sync my library and plan my revision."
      "I'm stuck on diagonalisation — quiz me Socratically."
      "Analyze proba_2023.pdf and make a 7-day study plan."
+
+The library rebuilds itself from the folders (see the user journey above), so adding
+or editing a document is enough — the dashboard re-syncs automatically, or the agent
+can call `sync_library`.
 
 
 Tools available to the tutor (`syllabus_processor` MCP server):
 
+- `sync_library` — rebuild the registry, cheatsheets, and inferred mock exams from
+  the documents in `~/.codewhale/syllabi` and `~/.codewhale/exams`.
 - `process_syllabus` — extract concepts and objectives from a syllabus PDF or Markdown file.
 - `process_exam` — extract questions and tested concepts from an exam PDF.
 - `generate_cheatsheet` — write a Markdown cheatsheet for a syllabus or concept.
@@ -141,6 +184,12 @@ Open http://localhost:5173 to view student progress, exam analytics, and
 learning insights. For a production build, run `npm run build` in the dashboard
 directory.
 
+The dashboard keeps a single **library registry** at `~/.codewhale/registry.json`.
+It re-syncs from the `syllabi/` and `exams/` folders automatically (on startup, on a
+poll every few seconds, and via the **Sync now** button), so documents you drop in
+appear without a restart. The same engine is shared with the `sync_library` MCP tool,
+so the agent and the dashboard always agree on the state of the library.
+
 
 ## Architecture
 
@@ -195,6 +244,7 @@ directory.
 │   └── social-science-analysis/SKILL.md
 ├── tutor/
 │   ├── .venv/                        # private Python environment
+│   ├── library.py                    # shared ingestion engine + registry
 │   ├── syllabus_processor_mcp.py     # MCP server
 │   ├── exam_analyzer_mcp.py          # MCP server
 │   ├── math_engine_mcp.py            # MCP server (SymPy)
@@ -202,8 +252,9 @@ directory.
 │   ├── tutor_dashboard.py            # dashboard API
 │   ├── dashboard/                    # React (Vite) frontend
 │   └── ...                           # helper scripts
-├── syllabi/                          # processed syllabus JSON
-├── exams/                            # processed exam JSON
+├── registry.json                     # library index (syllabi, exams, sources)
+├── syllabi/                          # organised syllabus JSON (+ raw sources)
+├── exams/                            # analysed + inferred mock exam JSON
 ├── cheatsheets/                      # generated cheatsheets
 └── tutor_progress/                   # student progress (unified)
 ```

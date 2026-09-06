@@ -1,323 +1,395 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  API, getJSON, postJSON, loadPrefs, savePrefs, updateStreak, totalXp, globalLevel,
+  presetById, personaFromVibe, PRESETS, MOODS,
+} from './lib'
+import { Kingdom, World, Quest, Gauntlet, Maps, ModelView, Reflection, Settings } from './views'
+import { I18nProvider, useI18n, makeT, detectLocale, LOCALES, LOCALE_NAMES } from './i18n'
+import './App.css'
 
-const API = '/api'
+const NAV = [
+  { id: 'kingdom', emoji: '🏰', key: 'nav.kingdom' },
+  { id: 'quest', emoji: '🐋', key: 'nav.quest' },
+  { id: 'gauntlet', emoji: '⚔️', key: 'nav.gauntlet' },
+  { id: 'maps', emoji: '🗺️', key: 'nav.maps' },
+  { id: 'model', emoji: '🧩', key: 'nav.model' },
+  { id: 'reflection', emoji: '📊', key: 'nav.reflection' },
+  { id: 'settings', emoji: '⚙️', key: 'nav.settings' },
+]
 
-function pct(value) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—'
-  return `${Math.round(Number(value) * 100)}%`
-}
-
-function fmtDate(iso) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString()
-}
-
-async function getJSON(url) {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-  return res.json()
+function defaultPrefs() {
+  return {
+    onboarded: false,
+    persona: { preset: 'sage', strict: 0.5, humor: 0.35, auto: false, mood: null },
+    chat: [],
+    dyslexia: false,
+    streak: 0,
+    lastDay: null,
+  }
 }
 
 export default function App() {
-  const [view, setView] = useState('overview')
-  const [students, setStudents] = useState([])
-  const [summary, setSummary] = useState(null)
+  const [view, setView] = useState('kingdom')
+  const [selectedSyllabus, setSelectedSyllabus] = useState(null)
+  const [syllabi, setSyllabi] = useState([])
+  const [details, setDetails] = useState({})
+  const [progress, setProgress] = useState([])
+  const [analytics, setAnalytics] = useState(null)
   const [exams, setExams] = useState([])
-  const [selectedStudent, setSelectedStudent] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [summary, setSummary] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState(null)
+  const [prefs, setPrefsState] = useState(() => ({ ...defaultPrefs(), ...loadPrefs() }))
+  const [locale, setLocaleState] = useState(() => loadPrefs().locale || detectLocale())
+  const [chatPrefill, setChatPrefill] = useState(null)
+
+  const t = useMemo(() => makeT(locale), [locale])
+  const setLocale = useCallback((l) => {
+    setLocaleState(l)
+    setPrefsState((prev) => savePrefs({ ...prev, locale: l }))
+  }, [])
+  const i18n = useMemo(() => ({ locale, t, setLocale }), [locale, t, setLocale])
+
+  const updatePrefs = useCallback((updater) => {
+    setPrefsState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      savePrefs(next)
+      return next
+    })
+  }, [])
+
+  // Count today's visit toward the streak exactly once per mount.
+  useEffect(() => {
+    setPrefsState((prev) => {
+      const next = updateStreak(prev)
+      savePrefs(next)
+      return next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const loadOverview = useCallback(async () => {
     setLoading(true)
     setError(null)
+    let syllabiList
     try {
-      const [s, sum, e] = await Promise.all([
-        getJSON(`${API}/students`),
-        getJSON(`${API}/analytics/summary`).catch(() => null),
-        getJSON(`${API}/exams`).catch(() => []),
-      ])
-      setStudents(Array.isArray(s) ? s : [])
-      setSummary(sum)
-      setExams(Array.isArray(e) ? e : [])
+      syllabiList = await getJSON(`${API}/syllabi`)
+    } catch (err) {
+      setError(`Cannot reach the tutor API (${err.message}). Is the backend running? (python tutor_dashboard.py)`)
+      setSyllabi([]); setProgress([]); setExams([]); setAnalytics(null); setSummary(null); setDetails({})
+      setLoading(false)
+      return
+    }
+    syllabiList = Array.isArray(syllabiList) ? syllabiList : []
+    const [prog, an, ex, sum] = await Promise.all([
+      getJSON(`${API}/progress`).catch(() => []),
+      getJSON(`${API}/analytics`).catch(() => null),
+      getJSON(`${API}/exams`).catch(() => []),
+      getJSON(`${API}/analytics/summary`).catch(() => null),
+    ])
+    setSyllabi(syllabiList)
+    setProgress(Array.isArray(prog) ? prog : [])
+    setAnalytics(an)
+    setExams(Array.isArray(ex) ? ex : [])
+    setSummary(sum)
+
+    const detailEntries = await Promise.all(
+      syllabiList.map(async (s) => {
+        try { return [s.id, await getJSON(`${API}/syllabi/${s.id}`)] }
+        catch { return [s.id, null] }
+      }),
+    )
+    setDetails(Object.fromEntries(detailEntries))
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { loadOverview() }, [loadOverview])
+
+  const syncNow = async () => {
+    setSyncing(true)
+    setError(null)
+    try {
+      await postJSON(`${API}/sync`)
+      await loadOverview()
     } catch (err) {
       setError(err.message)
     } finally {
-      setLoading(false)
+      setSyncing(false)
     }
-  }, [])
-
-  useEffect(() => {
-    loadOverview()
-  }, [loadOverview])
-
-  const openStudent = (student) => {
-    setSelectedStudent(student)
-    setView('student')
   }
 
+  const persona = useMemo(() => {
+    const p = prefs.persona || {}
+    return {
+      preset: p.preset || 'sage',
+      strict: p.strict ?? 0.5,
+      humor: p.humor ?? 0.35,
+      auto: !!p.auto,
+      mood: p.mood || null,
+    }
+  }, [prefs.persona])
+
+  const xp = useMemo(() => totalXp(progress), [progress])
+  const level = useMemo(() => globalLevel(progress), [progress])
+
+  function navigate(v, opts = {}) {
+    if (v === 'world' && opts.syllabusId) {
+      const s = syllabi.find((x) => x.id === opts.syllabusId)
+      if (s) { setSelectedSyllabus(s); setView('world') }
+      else { setSelectedSyllabus(null); setView('kingdom') }
+    } else {
+      setSelectedSyllabus(null)
+      setView(v)
+    }
+    if (opts.prefill) setChatPrefill(opts.prefill)
+  }
+  function enterWorld(s) { setSelectedSyllabus(s); setView('world') }
+  function finishOnboarding(result) {
+    updatePrefs({ ...prefs, onboarded: true, persona: { ...prefs.persona, ...result } })
+  }
+
+  const selectedDetail = selectedSyllabus ? details[selectedSyllabus.id] : null
+  const selectedProgress = selectedSyllabus
+    ? progress.find((p) => p.syllabus_id === selectedSyllabus.id)
+    : null
+  const selectedExams = selectedSyllabus
+    ? exams.filter((e) => e.syllabus_id === selectedSyllabus.id)
+    : []
+
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>🧠 Tutor Dashboard</h1>
-        <nav className="header-nav">
-          <button onClick={() => { setSelectedStudent(null); setView('overview') }}>Overview</button>
-          <button onClick={() => setView('exams')}>Exams</button>
-          <button onClick={loadOverview}>Refresh</button>
-        </nav>
-      </header>
-
-      <main className="app-main">
-        {loading && <div className="loading">Loading…</div>}
-        {error && <div className="weakness-section">⚠️ {error} — is the backend running? (python tutor_dashboard.py)</div>}
-
-        {!loading && view === 'overview' && (
-          <div className="dashboard">
-            {summary && (
-              <div className="stats-grid">
-                <StatCard label="Students" value={summary.total_students} />
-                <StatCard label="Syllabi" value={summary.total_syllabi} />
-                <StatCard label="Exams" value={summary.total_exams} />
-                <StatCard label="Learning rate" value={pct(summary.avg_learning_rate)} />
-              </div>
-            )}
-
-            <div className="students-section">
-              <h3>Students</h3>
-              {students.length === 0 ? (
-                <p className="loading">No students yet. Complete a tutoring session to populate progress data.</p>
-              ) : (
-                <div className="students-grid">
-                  {students.map((s) => (
-                    <div className="student-card" key={s.student_id} onClick={() => openStudent(s)}>
-                      <div className="student-avatar">🎓</div>
-                      <div className="student-info">
-                        <h4>{s.name}</h4>
-                        <p>Style: {s.learning_style}</p>
-                        <p>Syllabi: {(s.active_syllabi || []).join(', ') || '—'}</p>
-                        <button className="view-btn">View progress</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+    <I18nProvider value={i18n}>
+      {!prefs.onboarded ? (
+        <Onboarding onDone={finishOnboarding} />
+      ) : (
+        <div className={`app ${prefs.dyslexia ? 'dyslexic' : ''}`}>
+          <header className="app-header">
+            <div className="brand" onClick={() => navigate('kingdom')} role="button" tabIndex={0}>
+              <span className="brand-emoji">🐋</span>
+              <span className="brand-name">Knowledge Quest Academy</span>
             </div>
 
-            {summary && summary.recent_activity && summary.recent_activity.length > 0 && (
-              <div className="recent-activity">
-                <h3>Recent Activity</h3>
-                <div className="activity-list">
-                  {summary.recent_activity.map((a, i) => (
-                    <div className="activity-item" key={i}>
-                      <span className="activity-student">{a.student}</span>
-                      <span>{a.concept}</span>
-                      <span className="activity-confidence">{a.confidence}% confidence</span>
-                    </div>
-                  ))}
-                </div>
+            <nav className="header-nav">
+              {NAV.map((n) => (
+                <button
+                  key={n.id}
+                  className={view === n.id ? 'active' : ''}
+                  onClick={() => navigate(n.id)}
+                  title={t(n.key)}
+                >
+                  <span className="nav-emoji">{n.emoji}</span>
+                  <span className="nav-label">{t(n.key)}</span>
+                </button>
+              ))}
+            </nav>
+
+            <div className="header-tools">
+              <div className="header-badges">
+                <span className="badge" title={t('header.streak')}>🔥 {prefs.streak || 0}</span>
+                <span className="badge" title={t('header.xp')}>✨ {xp}</span>
+              </div>
+              <select
+                className="lang-select"
+                value={locale}
+                onChange={(e) => setLocale(e.target.value)}
+                title={t('header.language')}
+              >
+                {LOCALES.map((l) => <option key={l} value={l}>{LOCALE_NAMES[l]}</option>)}
+              </select>
+              <button
+                className={`tool-btn ${prefs.dyslexia ? 'active' : ''}`}
+                onClick={() => updatePrefs((p) => ({ ...p, dyslexia: !p.dyslexia }))}
+                title={t('header.dyslexia')}
+              >
+                🦋
+              </button>
+              <PersonaWidget persona={persona} onChange={(patch) => updatePrefs((p) => ({ ...p, persona: { ...p.persona, ...patch } }))} />
+              <button className="tool-btn sync" onClick={syncNow} disabled={syncing} title={t('header.sync')}>
+                {syncing ? '⟳' : '🔄'}
+              </button>
+            </div>
+          </header>
+
+          <main className="app-main">
+            {error && (
+              <div className="error-banner">
+                ⚠️ {error}
+                {!loading && <button className="btn small ghost" onClick={loadOverview}>{t('common.retry')}</button>}
               </div>
             )}
-          </div>
-        )}
 
-        {!loading && view === 'student' && selectedStudent && (
-          <StudentView student={selectedStudent} onBack={() => setView('overview')} />
-        )}
+            {loading && <div className="loading">{t('common.loading')}</div>}
 
-        {!loading && view === 'exams' && <ExamsView exams={exams} />}
-      </main>
-    </div>
+            {!loading && view === 'kingdom' && (
+              <Kingdom
+                syllabi={syllabi} details={details} progress={progress} exams={exams} summary={summary}
+                streak={prefs.streak || 0} xp={xp} level={level}
+                loading={loading} onEnterWorld={enterWorld} onNavigate={navigate}
+              />
+            )}
+            {!loading && view === 'world' && selectedSyllabus && (
+              <World
+                syllabus={selectedSyllabus} detail={selectedDetail} progress={selectedProgress}
+                exams={selectedExams} onBack={() => navigate('kingdom')} onNavigate={navigate}
+              />
+            )}
+            {!loading && view === 'quest' && (
+              <Quest
+                syllabi={syllabi} progress={progress} exams={exams}
+                prefs={prefs} setPrefs={updatePrefs} persona={persona}
+                loading={loading} onNavigate={navigate}
+                chatPrefill={chatPrefill} onConsumePrefill={() => setChatPrefill(null)}
+              />
+            )}
+            {!loading && view === 'gauntlet' && <Gauntlet exams={exams} syllabi={syllabi} />}
+            {!loading && view === 'maps' && <Maps syllabi={syllabi} details={details} />}
+            {!loading && view === 'model' && <ModelView syllabi={syllabi} progress={progress} />}
+            {!loading && view === 'reflection' && <Reflection progress={progress} analytics={analytics} summary={summary} />}
+            {!loading && view === 'settings' && <Settings syllabi={syllabi} onChanged={loadOverview} />}
+          </main>
+        </div>
+      )}
+    </I18nProvider>
   )
 }
 
-function StatCard({ label, value }) {
-  return (
-    <div className="stat-card">
-      <h3>{label}</h3>
-      <div className="stat-number">{value}</div>
-    </div>
-  )
-}
+// ---------------------------------------------------------------- persona widget
 
-function StudentView({ student, onBack }) {
-  const [progressList, setProgressList] = useState([])
-  const [analytics, setAnalytics] = useState(null)
-  const [syllabusId, setSyllabusId] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+function PersonaWidget({ persona, onChange }) {
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
 
   useEffect(() => {
-    let cancelled = false
-    async function load() {
-      setLoading(true)
-      setError(null)
-      try {
-        const [prog, an] = await Promise.all([
-          getJSON(`${API}/students/${student.student_id}/progress`),
-          getJSON(`${API}/students/${student.student_id}/analytics`).catch(() => null),
-        ])
-        if (cancelled) return
-        const list = Array.isArray(prog) ? prog : [prog]
-        setProgressList(list)
-        setAnalytics(an)
-        if (list.length > 0 && !syllabusId) setSyllabusId(list[0].syllabus_id)
-      } catch (err) {
-        if (!cancelled) setError(err.message)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+    if (!open) return
+    function onDoc(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
     }
-    load()
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [student.student_id])
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
 
-  const current = progressList.find((p) => p.syllabus_id === syllabusId) || progressList[0]
+  const preset = presetById(persona.preset)
+  const moodEmoji = persona.mood ? MOODS.find((m) => m.id === persona.mood)?.emoji : null
 
   return (
-    <div className="student-view">
-      <button className="back-btn" onClick={onBack}>← Back</button>
-      <h2>🎓 {student.name}</h2>
+    <div className="persona" ref={ref}>
+      <button className="persona-btn" onClick={() => setOpen((o) => !o)} title={t('header.switchVibe')}>
+        <span className="persona-emoji">{moodEmoji || preset.emoji}</span>
+        <span className="persona-name">{moodEmoji ? t('persona.dailyMood') : t(`persona.${preset.id}`)}</span>
+        <span className="persona-caret">▾</span>
+      </button>
 
-      {loading && <div className="loading">Loading…</div>}
-      {error && <div className="weakness-section">⚠️ {error}</div>}
-
-      {!loading && analytics && (
-        <div className="student-stats">
-          <StatCard label="Concepts" value={analytics.total_concepts} />
-          <StatCard label="Weak concepts" value={analytics.weak_concepts_count} />
-          <StatCard label="Sessions" value={analytics.total_sessions} />
-          <StatCard label="Learning rate" value={pct(analytics.learning_rate)} />
-        </div>
-      )}
-
-      {!loading && analytics && (analytics.error_patterns?.length > 0 || analytics.overconfidence > 0) && (
-        <div className="chart-card">
-          <h3>🔍 Error patterns & calibration</h3>
-          {analytics.error_patterns?.length > 0 && (
-            <div className="weakness-tags">
-              {analytics.error_patterns.map(([t, n]) => (
-                <span className="weakness-tag" key={t}>{t}: {n}</span>
-              ))}
-            </div>
-          )}
-          {analytics.overconfidence > 0 && (
-            <p className="response-text">
-              Overconfidence: {pct(analytics.overconfidence)} (predicted confidence above actual accuracy)
-            </p>
-          )}
-          {analytics.attempt_count != null && (
-            <p className="response-meta">{analytics.attempt_count} practice attempts recorded</p>
-          )}
-        </div>
-      )}
-
-      {!loading && progressList.length > 0 && (
-        <>
-          <div className="syllabus-selector">
-            {progressList.map((p) => (
+      {open && (
+        <div className="persona-drop">
+          <div className="persona-presets">
+            {PRESETS.map((p) => (
               <button
-                key={p.syllabus_id}
-                className={p.syllabus_id === syllabusId ? 'active' : ''}
-                onClick={() => setSyllabusId(p.syllabus_id)}
+                key={p.id}
+                className={`preset ${persona.preset === p.id && !persona.mood ? 'active' : ''}`}
+                onClick={() => onChange({ preset: p.id, strict: p.strict, humor: p.humor })}
               >
-                {p.syllabus_name || p.syllabus_id}
+                <span className="preset-emoji">{p.emoji}</span>
+                <span className="preset-name">{t(`persona.${p.id}`)}</span>
+                <span className="preset-tag">{t(`persona.${p.id}.tag`)}</span>
               </button>
             ))}
           </div>
 
-          {current && (
-            <>
-              <div className="stats-grid">
-                <StatCard label="Stage" value={`${Math.round(current.current_stage || 0)}%`} />
-                <StatCard label="Overall mastery" value={pct(current.overall_mastery)} />
-                <StatCard label="Sessions" value={current.session_count} />
-                <StatCard label="Last session" value={fmtDate(current.last_session)} />
-              </div>
+          <div className="slider-row">
+            <label>
+              <span>{t('persona.strictness')}</span>
+              <span className="slider-labels"><span>😎 {t('persona.chill')}</span><span>💪 {t('persona.drill')}</span></span>
+              <input
+                type="range" min="0" max="1" step="0.05"
+                value={persona.strict}
+                onChange={(e) => onChange({ strict: Number(e.target.value), preset: null })}
+              />
+            </label>
+          </div>
+          <div className="slider-row">
+            <label>
+              <span>{t('persona.humor')}</span>
+              <span className="slider-labels"><span>📚 {t('persona.serious')}</span><span>🤡 {t('persona.joker')}</span></span>
+              <input
+                type="range" min="0" max="1" step="0.05"
+                value={persona.humor}
+                onChange={(e) => onChange({ humor: Number(e.target.value), preset: null })}
+              />
+            </label>
+          </div>
 
-              {current.weaknesses && current.weaknesses.length > 0 && (
-                <div className="weakness-section">
-                  <h3>⚠️ Weaknesses</h3>
-                  <div className="weakness-tags">
-                    {current.weaknesses.map((w) => (
-                      <span className="weakness-tag" key={w}>{w}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {current.learning_objectives && current.learning_objectives.length > 0 && (
-                <div className="chart-card">
-                  <h3>🎯 Competencies (Compétences visées)</h3>
-                  <div className="responses-list">
-                    {current.learning_objectives.map((o, i) => (
-                      <div className="response-item" key={i}>
-                        <span className="response-concept">{i + 1}.</span> <span className="response-text">{o}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="chart-card">
-                <h3>Concept Mastery</h3>
-                {(current.concept_mastery || []).map((c) => (
-                  <div className="concept-row" key={c.concept}>
-                    <span className="concept-name">{c.concept}</span>
-                    <div className="concept-bar">
-                      <div
-                        className="concept-bar-fill"
-                        style={{ width: pct(c.mastery) }}
-                        data-trend={c.trend}
-                      />
-                    </div>
-                    <span className="concept-value">{pct(c.mastery)}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="recent-responses">
-                <h3>Recent Responses</h3>
-                <div className="responses-list">
-                  {(current.response_history || []).slice().reverse().map((r, i) => (
-                    <div className="response-item" key={i}>
-                      <div className="response-header">
-                        <span className="response-concept">{r.concept}</span>
-                        <span className="response-confidence">{r.confidence != null ? `${r.confidence}%` : pct(r.mastery)}</span>
-                      </div>
-                      {r.response && <div className="response-text">{r.response}</div>}
-                      <div className="response-meta">{fmtDate(r.timestamp)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </>
+          <label className="auto-row">
+            <input
+              type="checkbox"
+              checked={persona.auto}
+              onChange={(e) => onChange({ auto: e.target.checked })}
+            />
+            <span>{t('persona.auto')}</span>
+          </label>
+        </div>
       )}
     </div>
   )
 }
 
-function ExamsView({ exams }) {
+// ---------------------------------------------------------------- onboarding
+
+function Onboarding({ onDone }) {
+  const { t } = useI18n()
+  const [step, setStep] = useState(0)
+  const [vibe, setVibe] = useState(null)
+  const [stuck, setStuck] = useState(null)
+
+  function chooseVibe(v) { setVibe(v); setStep(1) }
+  function chooseStuck(s) {
+    const result = personaFromVibe(vibe, s)
+    onDone(result)
+  }
+
   return (
-    <div className="dashboard">
-      <h2>📊 Exams</h2>
-      {exams.length === 0 ? (
-        <p className="loading">No exams analyzed yet.</p>
-      ) : (
-        <div className="stats-grid">
-          {exams.map((e) => (
-            <div className="stat-card" key={e.exam_id}>
-              <h4>{e.exam_id}</h4>
-              <p>Syllabus: {e.syllabus_id}</p>
-              <p>Questions: {e.total_questions}</p>
-              <p>Avg length: {Math.round(e.avg_question_length || 0)} chars</p>
+    <div className="onboarding">
+      <div className="onboard-card">
+        <div className="onboard-mascot">🐋</div>
+        <h1>{t('onboard.title')}</h1>
+        <p className="onboard-sub">{t('onboard.sub')}</p>
+
+        {step === 0 && (
+          <div className="onboard-step">
+            <h2>{t('onboard.vibe')}</h2>
+            <div className="onboard-choices">
+              <button className="choice" onClick={() => chooseVibe('hard')}>
+                <span className="choice-emoji">🏋️</span>
+                <span className="choice-title">{t('onboard.vibe.hard.title')}</span>
+                <span className="choice-sub">{t('onboard.vibe.hard.sub')}</span>
+              </button>
+              <button className="choice" onClick={() => chooseVibe('soft')}>
+                <span className="choice-emoji">🧘</span>
+                <span className="choice-title">{t('onboard.vibe.soft.title')}</span>
+                <span className="choice-sub">{t('onboard.vibe.soft.sub')}</span>
+              </button>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        )}
+
+        {step === 1 && (
+          <div className="onboard-step">
+            <h2>{t('onboard.stuck')}</h2>
+            <div className="onboard-choices">
+              <button className="choice" onClick={() => chooseStuck('think')}>
+                <span className="choice-emoji">🧠</span>
+                <span className="choice-title">{t('onboard.stuck.think.title')}</span>
+                <span className="choice-sub">{t('onboard.stuck.think.sub')}</span>
+              </button>
+              <button className="choice" onClick={() => chooseStuck('tell')}>
+                <span className="choice-emoji">💡</span>
+                <span className="choice-title">{t('onboard.stuck.tell.title')}</span>
+                <span className="choice-sub">{t('onboard.stuck.tell.sub')}</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
